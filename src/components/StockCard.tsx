@@ -1,0 +1,235 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createChart, IChartApi, CandlestickSeries } from "lightweight-charts";
+import { Stock } from "@/lib/useWatchlist";
+import { calcSignals, Signal } from "@/lib/signals";
+import { useNotification } from "@/lib/useNotification";
+
+type Props = {
+  stock: Stock;
+  onRemove: () => void;
+};
+
+// 株価データの型
+type Candle = {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+export default function StockCard({ stock, onRemove }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInstance = useRef<IChartApi | null>(null);
+
+  const [candles, setCandles] = useState<Candle[]>([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [priceChange, setPriceChange] = useState<number | null>(null);
+  const { notify } = useNotification();
+
+  // 株価データを取得する
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        // Next.jsのAPIルート経由で取得（CORSを回避）
+        const res = await fetch(`/api/stock?code=${stock.code}`);
+        if (!res.ok) throw new Error("データ取得に失敗しました");
+        const data: Candle[] = await res.json();
+        setCandles(data);
+
+        // 最新価格と変動率を計算
+        if (data.length >= 2) {
+          const latest = data[data.length - 1];
+          const prev = data[data.length - 2];
+          setCurrentPrice(latest.close);
+          setPriceChange(((latest.close - prev.close) / prev.close) * 100);
+        }
+
+        // シグナルを計算
+        const detected = calcSignals(data);
+        setSignals(detected);
+
+        // 3指標以上揃った場合のみ通知する
+        if (detected.length >= 3) {
+          notify(stock, detected);
+        }
+      } catch (e) {
+        setError("データを取得できませんでした");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [stock.code]);
+
+  // チャートを描画する
+  useEffect(() => {
+    if (!chartRef.current || candles.length === 0) return;
+
+    // 既存チャートを破棄してから再生成
+    if (chartInstance.current) {
+      chartInstance.current.remove();
+    }
+
+    const chart = createChart(chartRef.current, {
+      width: chartRef.current.clientWidth,
+      height: 240,
+      layout: {
+        background: { color: "#111827" },
+        textColor: "#9ca3af",
+      },
+      grid: {
+        vertLines: { color: "#1f2937" },
+        horzLines: { color: "#1f2937" },
+      },
+      timeScale: {
+        borderColor: "#374151",
+        timeVisible: true,
+      },
+      rightPriceScale: {
+        borderColor: "#374151",
+      },
+    });
+
+    // ローソク足を追加
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: "#22c55e",
+      downColor: "#ef4444",
+      borderUpColor: "#22c55e",
+      borderDownColor: "#ef4444",
+      wickUpColor: "#22c55e",
+      wickDownColor: "#ef4444",
+    });
+
+    candleSeries.setData(candles as Parameters<typeof candleSeries.setData>[0]);
+    chart.timeScale().fitContent();
+
+    chartInstance.current = chart;
+
+    // ウィンドウリサイズ対応
+    const handleResize = () => {
+      if (chartRef.current) {
+        chart.applyOptions({ width: chartRef.current.clientWidth });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+    };
+  }, [candles]);
+
+  // 買い・売りシグナルを分類
+  const buySignals = signals.filter((s) => s.type === "buy");
+  const sellSignals = signals.filter((s) => s.type === "sell");
+
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+      {/* カードヘッダー */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-white">{stock.name}</span>
+            <span className="text-xs text-gray-400 font-mono bg-gray-800 px-1.5 py-0.5 rounded">
+              {stock.code}
+            </span>
+          </div>
+          {/* 現在価格・変動率 */}
+          {currentPrice && (
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-lg font-bold text-white">
+                ¥{currentPrice.toLocaleString()}
+              </span>
+              {priceChange !== null && (
+                <span
+                  className={`text-xs font-medium ${
+                    priceChange >= 0 ? "text-green-400" : "text-red-400"
+                  }`}
+                >
+                  {priceChange >= 0 ? "▲" : "▼"}
+                  {Math.abs(priceChange).toFixed(2)}%
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        {/* 削除ボタン */}
+        <button
+          onClick={onRemove}
+          className="text-gray-500 hover:text-red-400 text-sm transition-colors px-2 py-1"
+          title="ウォッチリストから削除"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* チャート表示エリア */}
+      <div className="relative">
+        {loading && (
+          <div className="flex items-center justify-center h-60 text-gray-500 text-sm">
+            読み込み中...
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center justify-center h-60 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+        <div
+          ref={chartRef}
+          className={`w-full ${loading || error ? "hidden" : ""}`}
+        />
+      </div>
+
+      {/* シグナル表示エリア */}
+      {signals.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-700 space-y-2">
+          {/* 買いシグナル */}
+          {buySignals.length > 0 && (
+            <div>
+              <span className="text-xs font-medium text-green-400 mr-2">
+                📈 買いシグナル（{buySignals.length}指標）
+              </span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {buySignals.map((s) => (
+                  <span
+                    key={s.name}
+                    className="text-xs bg-green-900/40 text-green-300 border border-green-700/50 px-2 py-0.5 rounded-full"
+                  >
+                    {s.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* 売りシグナル */}
+          {sellSignals.length > 0 && (
+            <div>
+              <span className="text-xs font-medium text-red-400 mr-2">
+                📉 売りシグナル（{sellSignals.length}指標）
+              </span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {sellSignals.map((s) => (
+                  <span
+                    key={s.name}
+                    className="text-xs bg-red-900/40 text-red-300 border border-red-700/50 px-2 py-0.5 rounded-full"
+                  >
+                    {s.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
