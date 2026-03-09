@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "銘柄コードが必要です" }, { status: 400 });
   }
 
-  // 日本株は銘柄コード + ".T" がYahoo Financeのシンボル
-  const symbol = `${code}.T`;
+  // 日本株（数字コード）は ".T" を付加、米国株（英字コード）はそのまま使用
+  const symbol = /^\d+$/.test(code) ? `${code}.T` : code;
 
   // 過去1年間の日足データを取得（中長期分析用）
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
