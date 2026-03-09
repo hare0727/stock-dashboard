@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createChart, IChartApi, CandlestickSeries } from "lightweight-charts";
+import { createChart, IChartApi, CandlestickSeries, LineSeries } from "lightweight-charts";
 import { Stock } from "@/lib/useWatchlist";
 import { calcSignals, Signal } from "@/lib/signals";
 import { useNotification } from "@/lib/useNotification";
@@ -108,9 +108,105 @@ export default function StockCard({ stock, onRemove }: Props) {
       wickUpColor: "#22c55e",
       wickDownColor: "#ef4444",
     });
-
     candleSeries.setData(candles as Parameters<typeof candleSeries.setData>[0]);
-    chart.timeScale().fitContent();
+
+    // --- 指標ラインの計算 ---
+    const closes = candles.map((c) => c.close);
+
+    // 単純移動平均（SMA）を計算するローカル関数
+    const calcSma = (values: number[], period: number) => {
+      return values.map((_, i) => {
+        if (i < period - 1) return NaN;
+        const sum = values.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+        return sum / period;
+      });
+    };
+
+    // ボリンジャーバンドを計算するローカル関数
+    const calcBB = (values: number[], period = 20) => {
+      const mid = calcSma(values, period);
+      return values.map((_, i) => {
+        if (i < period - 1) return { upper: NaN, mid: mid[i], lower: NaN };
+        const slice = values.slice(i - period + 1, i + 1);
+        const mean = mid[i];
+        const std = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / period);
+        return { upper: mean + 2 * std, mid: mean, lower: mean - 2 * std };
+      });
+    };
+
+    const sma5 = calcSma(closes, 5);
+    const sma25 = calcSma(closes, 25);
+    const sma75 = calcSma(closes, 75);
+    const bb = calcBB(closes, 20);
+
+    // データを { time, value } 形式に変換するヘルパー
+    const toLineData = (values: number[]) =>
+      candles
+        .map((c, i) => ({ time: c.time, value: values[i] }))
+        .filter((d) => !isNaN(d.value)) as { time: string; value: number }[];
+
+    // SMA5（白・細線）
+    const sma5Series = chart.addSeries(LineSeries, {
+      color: "#e2e8f0",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    sma5Series.setData(toLineData(sma5));
+
+    // SMA25（黄色）
+    const sma25Series = chart.addSeries(LineSeries, {
+      color: "#facc15",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    sma25Series.setData(toLineData(sma25));
+
+    // SMA75（オレンジ）
+    const sma75Series = chart.addSeries(LineSeries, {
+      color: "#f97316",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    sma75Series.setData(toLineData(sma75));
+
+    // ボリンジャーバンド上限（紫・細線）
+    const bbUpperSeries = chart.addSeries(LineSeries, {
+      color: "#a78bfa",
+      lineWidth: 1,
+      lineStyle: 1, // 破線
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    bbUpperSeries.setData(toLineData(bb.map((b) => b.upper)));
+
+    // ボリンジャーバンド中間（紫・薄め）
+    const bbMidSeries = chart.addSeries(LineSeries, {
+      color: "#7c3aed",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    bbMidSeries.setData(toLineData(bb.map((b) => b.mid)));
+
+    // ボリンジャーバンド下限（紫・細線）
+    const bbLowerSeries = chart.addSeries(LineSeries, {
+      color: "#a78bfa",
+      lineWidth: 1,
+      lineStyle: 1, // 破線
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    bbLowerSeries.setData(toLineData(bb.map((b) => b.lower)));
+
+    // 表示期間を直近3ヶ月に設定
+    const to = candles[candles.length - 1].time;
+    const fromDate = new Date(to);
+    fromDate.setMonth(fromDate.getMonth() - 3);
+    const from = fromDate.toISOString().split("T")[0];
+    chart.timeScale().setVisibleRange({ from: from as unknown as import("lightweight-charts").Time, to: to as unknown as import("lightweight-charts").Time });
 
     chartInstance.current = chart;
 
