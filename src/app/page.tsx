@@ -26,6 +26,23 @@ export default function Home() {
             <h1 className="text-xl font-bold text-white">株ダッシュボード</h1>
             <p className="text-xs text-gray-400 mt-0.5">ウォッチリスト · シグナル通知</p>
           </div>
+
+          {/* 通知条件の説明 */}
+          <div className="hidden md:flex flex-col items-center text-center gap-1">
+            <p className="text-xs text-gray-400 font-medium">🔔 通知条件</p>
+            <p className="text-xs text-gray-500">以下の指標が <span className="text-yellow-400 font-bold">3つ以上</span> 同時に揃ったときブラウザ通知</p>
+            <div className="flex gap-2 mt-0.5">
+              <div className="flex flex-wrap gap-1 justify-center">
+                {["ゴールデンクロス","RSI売られすぎ","MACDクロス(買)","BB下限タッチ","短期上昇トレンド"].map((s) => (
+                  <span key={s} className="text-xs bg-green-900/30 text-green-400 border border-green-700/40 px-1.5 py-0.5 rounded-full">{s}</span>
+                ))}
+                {["デッドクロス","RSI買われすぎ","MACDクロス(売)","BB上限タッチ","短期下降トレンド"].map((s) => (
+                  <span key={s} className="text-xs bg-red-900/30 text-red-400 border border-red-700/40 px-1.5 py-0.5 rounded-full">{s}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* 銘柄追加ボタン */}
           <button
             onClick={() => setShowModal(true)}
