@@ -9,6 +9,8 @@ import { useNotification } from "@/lib/useNotification";
 type Props = {
   stock: Stock;
   onRemove: () => void;
+  // シグナル検出時に呼ばれるコールバック（履歴記録用）
+  onSignalDetected?: (stock: Stock, signals: Signal[], price: number) => void;
 };
 
 // 株価データの型
@@ -20,7 +22,7 @@ type Candle = {
   close: number;
 };
 
-export default function StockCard({ stock, onRemove }: Props) {
+export default function StockCard({ stock, onRemove, onSignalDetected }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<IChartApi | null>(null);
 
@@ -56,9 +58,14 @@ export default function StockCard({ stock, onRemove }: Props) {
         const detected = calcSignals(data);
         setSignals(detected);
 
-        // 3指標以上揃った場合のみ通知する
+        // 3指標以上揃った場合のみ通知・履歴記録する
         if (detected.length >= 3) {
           notify(stock, detected);
+          // 履歴記録コールバックを呼ぶ（発生時の最新終値を渡す）
+          if (onSignalDetected) {
+            const latestPrice = data[data.length - 1].close;
+            onSignalDetected(stock, detected, latestPrice);
+          }
         }
       } catch (e) {
         setError("データを取得できませんでした");

@@ -4,13 +4,19 @@ import { useState, useEffect } from "react";
 import { useWatchlist } from "@/lib/useWatchlist";
 import StockCard from "@/components/StockCard";
 import AddStockModal from "@/components/AddStockModal";
+import SignalHistoryModal from "@/components/SignalHistoryModal";
 import { useNotification } from "@/lib/useNotification";
+import { useSignalHistory } from "@/lib/useSignalHistory";
 
 export default function Home() {
   // 銘柄追加モーダルの表示状態
   const [showModal, setShowModal] = useState(false);
+  // シグナル履歴モーダルの表示状態
+  const [showHistory, setShowHistory] = useState(false);
+
   const { watchlist, addStock, removeStock } = useWatchlist();
   const { requestPermission } = useNotification();
+  const { history, addRecord, updatePrices, calcStats } = useSignalHistory();
 
   // ページ読み込み時にブラウザ通知の許可をリクエスト
   useEffect(() => {
@@ -43,14 +49,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 銘柄追加ボタン */}
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            <span className="text-lg leading-none">＋</span>
-            銘柄を追加
-          </button>
+          {/* 右側のボタン群 */}
+          <div className="flex items-center gap-2">
+            {/* シグナル履歴ボタン */}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              <span>📋</span>
+              <span className="hidden sm:inline">シグナル履歴</span>
+              {history.length > 0 && (
+                <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
+                  {history.length}
+                </span>
+              )}
+            </button>
+
+            {/* 銘柄追加ボタン */}
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <span className="text-lg leading-none">＋</span>
+              銘柄を追加
+            </button>
+          </div>
         </div>
       </header>
 
@@ -81,6 +104,7 @@ export default function Home() {
                 key={stock.code}
                 stock={stock}
                 onRemove={() => removeStock(stock.code)}
+                onSignalDetected={addRecord}
               />
             ))}
           </div>
@@ -95,6 +119,16 @@ export default function Home() {
             setShowModal(false);
           }}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {/* シグナル履歴モーダル */}
+      {showHistory && (
+        <SignalHistoryModal
+          history={history}
+          stats={calcStats()}
+          onClose={() => setShowHistory(false)}
+          onMount={updatePrices}
         />
       )}
     </div>
