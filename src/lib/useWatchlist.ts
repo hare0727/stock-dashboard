@@ -4,8 +4,13 @@ import { useState, useEffect } from "react";
 
 // 銘柄の型定義
 export type Stock = {
-  code: string;   // 銘柄コード（例：7203）
-  name: string;   // 銘柄名（例：トヨタ自動車）
+  code: string;           // 銘柄コード（例：7203）
+  name: string;           // 銘柄名（例：トヨタ自動車）
+  purchasePrice?: number; // 購入単価（任意）
+  shares?: number;        // 保有株数（任意）
+  memo?: string;          // メモ（任意）
+  alertPrice?: number;    // 価格アラートの目標価格（任意）
+  alertDirection?: "above" | "below"; // アラートの方向（上抜け/下抜け）
 };
 
 // ウォッチリストの管理フック（Redisに永続化）
@@ -55,5 +60,14 @@ export function useWatchlist() {
     await saveToRedis(newList);
   };
 
-  return { watchlist, addStock, removeStock };
+  // 既存銘柄の情報を更新する（メモ・損益・アラートなど）
+  const updateStock = async (code: string, patch: Partial<Stock>) => {
+    const newList = watchlist.map((s) =>
+      s.code === code ? { ...s, ...patch } : s
+    );
+    setWatchlist(newList);
+    await saveToRedis(newList);
+  };
+
+  return { watchlist, addStock, removeStock, updateStock };
 }

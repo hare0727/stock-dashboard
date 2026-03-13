@@ -7,14 +7,22 @@ import AddStockModal from "@/components/AddStockModal";
 import SignalHistoryModal from "@/components/SignalHistoryModal";
 import { useNotification } from "@/lib/useNotification";
 import { useSignalHistory } from "@/lib/useSignalHistory";
+import { Signal } from "@/lib/signals";
+
+// ソート種別
+type SortType = "default" | "signals" | "buy" | "sell";
 
 export default function Home() {
   // 銘柄追加モーダルの表示状態
   const [showModal, setShowModal] = useState(false);
   // シグナル履歴モーダルの表示状態
   const [showHistory, setShowHistory] = useState(false);
+  // ソート種別（デフォルト＝登録順）
+  const [sortBy, setSortBy] = useState<SortType>("default");
+  // 各銘柄のシグナル数を記録するマップ（ソートに使用）
+  const [signalMap, setSignalMap] = useState<Record<string, Signal[]>>({});
 
-  const { watchlist, addStock, removeStock } = useWatchlist();
+  const { watchlist, addStock, removeStock, updateStock } = useWatchlist();
   const { requestPermission } = useNotification();
   const { history, addRecord, updatePrices, calcStats } = useSignalHistory();
 
@@ -22,6 +30,43 @@ export default function Home() {
   useEffect(() => {
     requestPermission();
   }, []);
+
+  // 各カードからシグナル情報を受け取って記録する
+  const handleSignalsUpdate = (code: string, signals: Signal[]) => {
+    setSignalMap((prev) => ({ ...prev, [code]: signals }));
+  };
+
+  // ソートされたウォッチリストを返す
+  const sortedWatchlist = [...watchlist].sort((a, b) => {
+    if (sortBy === "default") return 0;
+    const aSignals = signalMap[a.code] ?? [];
+    const bSignals = signalMap[b.code] ?? [];
+    if (sortBy === "signals") {
+      // 総シグナル数が多い順
+      return bSignals.length - aSignals.length;
+    }
+    if (sortBy === "buy") {
+      // 買いシグナル数が多い順
+      const aBuy = aSignals.filter((s) => s.type === "buy").length;
+      const bBuy = bSignals.filter((s) => s.type === "buy").length;
+      return bBuy - aBuy;
+    }
+    if (sortBy === "sell") {
+      // 売りシグナル数が多い順
+      const aSell = aSignals.filter((s) => s.type === "sell").length;
+      const bSell = bSignals.filter((s) => s.type === "sell").length;
+      return bSell - aSell;
+    }
+    return 0;
+  });
+
+  // ソートボタンのスタイルを返すヘルパー
+  const sortBtnClass = (type: SortType) =>
+    `text-xs px-2.5 py-1 rounded-full transition-colors ${
+      sortBy === type
+        ? "bg-blue-600 text-white"
+        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+    }`;
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -75,6 +120,17 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {/* ソートバー（銘柄がある場合のみ表示） */}
+        {watchlist.length > 0 && (
+          <div className="flex items-center gap-2 mt-3 max-w-screen-2xl mx-auto">
+            <span className="text-xs text-gray-500">並び順：</span>
+            <button onClick={() => setSortBy("default")} className={sortBtnClass("default")}>登録順</button>
+            <button onClick={() => setSortBy("signals")} className={sortBtnClass("signals")}>シグナル多い順</button>
+            <button onClick={() => setSortBy("buy")} className={sortBtnClass("buy")}>買いシグナル優先</button>
+            <button onClick={() => setSortBy("sell")} className={sortBtnClass("sell")}>売りシグナル優先</button>
+          </div>
+        )}
       </header>
 
       {/* メインコンテンツ */}
@@ -99,12 +155,14 @@ export default function Home() {
         ) : (
           // チャート一覧グリッド（横4列）
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-            {watchlist.map((stock) => (
+            {sortedWatchlist.map((stock) => (
               <StockCard
                 key={stock.code}
                 stock={stock}
                 onRemove={() => removeStock(stock.code)}
                 onSignalDetected={addRecord}
+                onSignalsUpdate={(signals) => handleSignalsUpdate(stock.code, signals)}
+                onUpdateStock={(patch) => updateStock(stock.code, patch)}
               />
             ))}
           </div>

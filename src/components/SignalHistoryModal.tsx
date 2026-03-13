@@ -45,6 +45,54 @@ function winRateColor(rate: number | null): string {
   return "bg-red-500";
 }
 
+// シグナル履歴をCSVとしてダウンロードする
+function downloadCsv(history: SignalRecord[]) {
+  // CSVヘッダー行
+  const header = [
+    "日付",
+    "銘柄コード",
+    "銘柄名",
+    "種類",
+    "シグナル数",
+    "シグナル一覧",
+    "発生時価格",
+    "1週後価格",
+    "2週後価格",
+    "3週後価格",
+    "1ヶ月後価格",
+  ].join(",");
+
+  // 各レコードをCSV行に変換する
+  const rows = [...history].reverse().map((r) => {
+    const signalTypeLabel =
+      r.signalType === "buy" ? "買い" : r.signalType === "sell" ? "売り" : "混合";
+    return [
+      r.date,
+      r.stockCode,
+      `"${r.stockName}"`,
+      signalTypeLabel,
+      r.signalCount,
+      `"${r.signals.join(" / ")}"`,
+      r.priceAtSignal,
+      r.price1w ?? "",
+      r.price2w ?? "",
+      r.price3w ?? "",
+      r.price1m ?? "",
+    ].join(",");
+  });
+
+  const csv = [header, ...rows].join("\n");
+  // BOMを付けてExcelで文字化けしないようにする
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `signal_history_${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function SignalHistoryModal({ history, stats, onClose, onMount }: Props) {
   // モーダルを開いたときに価格を更新する
   useEffect(() => {
@@ -89,6 +137,16 @@ export default function SignalHistoryModal({ history, stats, onClose, onMount }:
                   最高勝率：{bestPeriod.label} {bestPeriod.totalWinRate}%
                 </span>
               </div>
+            )}
+            {/* CSVエクスポートボタン */}
+            {history.length > 0 && (
+              <button
+                onClick={() => downloadCsv(history)}
+                className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <span>⬇️</span>
+                CSVダウンロード
+              </button>
             )}
             <button
               onClick={onClose}

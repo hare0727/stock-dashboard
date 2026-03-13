@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { Signal } from "./signals";
 import { Stock } from "./useWatchlist";
 
@@ -46,5 +45,23 @@ export function useNotification() {
     });
   };
 
-  return { requestPermission, notify };
+  // 価格アラート通知を送る（設定価格を上抜け・下抜けしたとき）
+  const notifyPriceAlert = (
+    stock: Stock,
+    currentPrice: number,
+    alertPrice: number,
+    direction: "above" | "below"
+  ) => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const arrow = direction === "above" ? "▲" : "▼";
+    const label = direction === "above" ? "上抜け" : "下抜け";
+    new Notification(`🔔 ${stock.name} 価格アラート`, {
+      body: `${arrow} ¥${currentPrice.toLocaleString()} が設定価格 ¥${alertPrice.toLocaleString()} を${label}しました`,
+      icon: "/favicon.ico",
+    });
+  };
+
+  return { requestPermission, notify, notifyPriceAlert };
 }

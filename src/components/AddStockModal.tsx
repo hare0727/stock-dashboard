@@ -29,6 +29,11 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [search, setSearch] = useState("");
+  // 購入情報（任意）
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [shares, setShares] = useState("");
+  // 詳細入力欄の表示フラグ
+  const [showDetail, setShowDetail] = useState(false);
 
   // 検索フィルタ（銘柄コードまたは名前で絞り込み）
   const filtered = POPULAR_STOCKS.filter(
@@ -37,10 +42,32 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
       s.name.includes(search)
   );
 
+  // 購入情報を付与した Stock オブジェクトを生成する
+  const buildStock = (base: Stock): Stock => {
+    const p = parseFloat(purchasePrice);
+    const s = parseFloat(shares);
+    return {
+      ...base,
+      ...(purchasePrice && !isNaN(p) && p > 0 ? { purchasePrice: p } : {}),
+      ...(shares && !isNaN(s) && s > 0 ? { shares: s } : {}),
+    };
+  };
+
+  // 人気銘柄リストから追加（クリック時）
+  const handleSelectPopular = (stock: Stock) => {
+    // 購入情報が入力済みの場合はそれを付与する
+    const hasPurchaseInfo = purchasePrice.trim() || shares.trim();
+    if (hasPurchaseInfo) {
+      onAdd(buildStock(stock));
+    } else {
+      onAdd(stock);
+    }
+  };
+
   // 手動入力で追加
   const handleManualAdd = () => {
     if (!code.trim() || !name.trim()) return;
-    onAdd({ code: code.trim(), name: name.trim() });
+    onAdd(buildStock({ code: code.trim(), name: name.trim() }));
   };
 
   return (
@@ -83,7 +110,7 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
               {filtered.map((stock) => (
                 <button
                   key={stock.code}
-                  onClick={() => onAdd(stock)}
+                  onClick={() => handleSelectPopular(stock)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-left"
                 >
                   <span className="text-sm text-white">{stock.name}</span>
@@ -95,6 +122,46 @@ export default function AddStockModal({ onAdd, onClose }: Props) {
               )}
             </div>
           </div>
+
+          {/* 購入情報（任意）の入力欄トグル */}
+          <button
+            onClick={() => setShowDetail((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            <span>{showDetail ? "▼" : "▶"}</span>
+            購入情報を入力する（任意・損益計算に使用）
+          </button>
+
+          {/* 購入情報の入力フォーム */}
+          {showDetail && (
+            <div className="bg-gray-800/50 rounded-lg p-3 space-y-3">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1 block">購入単価（円）</label>
+                  <input
+                    type="number"
+                    placeholder="例：2500"
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1 block">保有株数</label>
+                  <input
+                    type="number"
+                    placeholder="例：100"
+                    value={shares}
+                    onChange={(e) => setShares(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                ※ 入力した購入単価・株数をもとに含み損益をカードに表示します
+              </p>
+            </div>
+          )}
 
           {/* 区切り線 */}
           <div className="flex items-center gap-3">
