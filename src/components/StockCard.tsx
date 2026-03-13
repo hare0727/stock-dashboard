@@ -141,9 +141,10 @@ export default function StockCard({
   useEffect(() => {
     if (!chartRef.current || candles.length === 0) return;
 
-    // 既存チャートを破棄してから再生成
+    // 既存チャートを破棄してから再生成（nullにしてから作り直す）
     if (chartInstance.current) {
       chartInstance.current.remove();
+      chartInstance.current = null;
     }
 
     const chart = createChart(chartRef.current, {
@@ -299,16 +300,20 @@ export default function StockCard({
     });
     bbLowerSeries.setData(toLineData(bb.map((b) => b.lower)));
 
-    // 選択期間に応じて表示範囲を設定する
-    const to = candles[candles.length - 1].time;
-    const fromDate = new Date(to);
-    const selectedPeriod = PERIODS.find((p) => p.key === period) ?? PERIODS[1];
-    fromDate.setMonth(fromDate.getMonth() - selectedPeriod.months);
-    const from = fromDate.toISOString().split("T")[0];
-    chart.timeScale().setVisibleRange({
-      from: from as unknown as import("lightweight-charts").Time,
-      to: to as unknown as import("lightweight-charts").Time,
-    });
+    // 選択期間に応じて表示範囲を設定する（エラー時は全体表示にフォールバック）
+    try {
+      const to = candles[candles.length - 1].time;
+      const fromDate = new Date(to);
+      const selectedPeriod = PERIODS.find((p) => p.key === period) ?? PERIODS[1];
+      fromDate.setMonth(fromDate.getMonth() - selectedPeriod.months);
+      const from = fromDate.toISOString().split("T")[0];
+      chart.timeScale().setVisibleRange({
+        from: from as unknown as import("lightweight-charts").Time,
+        to: to as unknown as import("lightweight-charts").Time,
+      });
+    } catch {
+      chart.timeScale().fitContent();
+    }
 
     chartInstance.current = chart;
 
@@ -321,7 +326,9 @@ export default function StockCard({
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
+      // クリーンアップ後に参照をnullにして二重破棄を防ぐ
       chart.remove();
+      chartInstance.current = null;
     };
   }, [candles, period, signals]);
 
