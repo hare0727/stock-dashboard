@@ -116,17 +116,22 @@ export default function StockCard({
       // 親にシグナル一覧を通知（ソート用）
       onSignalsUpdate?.(detected);
 
-      // 3指標以上揃った場合のみ通知・履歴記録する
-      // シグナルのキーを生成して前回と比較し、同じなら重複通知しない
-      if (detected.length >= 3) {
-        const signalKey = detected.map((s) => s.name).sort().join(",");
+      // 買いのみ3つ以上 or 売りのみ3つ以上揃った場合のみ通知・履歴記録する
+      const buySignals = detected.filter((s) => s.type === "buy");
+      const sellSignals = detected.filter((s) => s.type === "sell");
+      const shouldNotify = buySignals.length >= 3 || sellSignals.length >= 3;
+      // 通知対象のシグナル（買いのみ3つ以上なら買いシグナルのみ、売りのみ3つ以上なら売りシグナルのみ）
+      const notifySignals = buySignals.length >= 3 ? buySignals : sellSignals;
+
+      if (shouldNotify) {
+        const signalKey = notifySignals.map((s) => s.name).sort().join(",");
         if (notificationsEnabled && signalKey !== notifiedSignalKeyRef.current) {
           notifiedSignalKeyRef.current = signalKey;
-          notify(stock, detected);
+          notify(stock, notifySignals);
         }
         if (onSignalDetected) {
           const latestPrice = data[data.length - 1].close;
-          onSignalDetected(stock, detected, latestPrice);
+          onSignalDetected(stock, notifySignals, latestPrice);
         }
       }
 
