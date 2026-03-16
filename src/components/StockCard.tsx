@@ -5,6 +5,7 @@ import { createChart, IChartApi, CandlestickSeries, LineSeries, SeriesMarker, Ti
 import { Stock } from "@/lib/useWatchlist";
 import { calcSignals, Signal } from "@/lib/signals";
 import { useNotification } from "@/lib/useNotification";
+import { STOCK_DESCRIPTIONS } from "@/lib/stockDescriptions";
 
 type Props = {
   stock: Stock;
@@ -591,8 +592,14 @@ export default function StockCard({
         </div>
       )}
 
-      {/* メモ入力エリア */}
-      <div className="px-4 pb-3 pt-2 border-t border-gray-800">
+      {/* 会社説明 + メモ入力エリア */}
+      <div className="px-4 pb-3 pt-2 border-t border-gray-800 space-y-1.5">
+        {/* 会社説明（登録済みの場合のみ表示） */}
+        {STOCK_DESCRIPTIONS[stock.code] && (
+          <p className="text-xs text-gray-500 leading-relaxed">
+            {STOCK_DESCRIPTIONS[stock.code]}
+          </p>
+        )}
         <input
           type="text"
           value={memoInput}
