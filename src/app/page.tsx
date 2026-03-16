@@ -114,7 +114,7 @@ export default function Home() {
             <button
               onClick={toggleNotifications}
               title={notificationsEnabled ? "通知をOFFにする" : "通知をONにする"}
-              className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 notificationsEnabled
                   ? "bg-yellow-600 hover:bg-yellow-500 text-white"
                   : "bg-gray-700 hover:bg-gray-600 text-gray-400"
@@ -127,7 +127,7 @@ export default function Home() {
             {/* シグナル履歴ボタン */}
             <button
               onClick={() => setShowHistory(true)}
-              className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
             >
               <span>📋</span>
               <span className="hidden sm:inline">シグナル履歴</span>
@@ -141,7 +141,7 @@ export default function Home() {
             {/* 銘柄追加ボタン */}
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
             >
               <span className="text-lg leading-none">＋</span>
               銘柄を追加
