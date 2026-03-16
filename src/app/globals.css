@@ -8,7 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* TailwindのfontユーティリティすべてにNoto JPを含める */
+  --font-sans: var(--font-geist-sans), var(--font-noto-jp), sans-serif;
 }
 
 body {

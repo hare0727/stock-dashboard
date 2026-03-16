@@ -596,7 +596,7 @@ export default function StockCard({
       <div className="px-4 pb-3 pt-2 border-t border-gray-800 space-y-1.5">
         {/* 会社説明（登録済みの場合のみ表示） */}
         {STOCK_DESCRIPTIONS[stock.code] && (
-          <p className="text-xs text-gray-500 leading-relaxed">
+          <p className="text-xs text-gray-400 leading-relaxed border-l-2 border-gray-700 pl-2">
             {STOCK_DESCRIPTIONS[stock.code]}
           </p>
         )}
