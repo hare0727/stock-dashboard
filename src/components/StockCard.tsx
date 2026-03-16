@@ -15,6 +15,8 @@ type Props = {
   onSignalsUpdate?: (signals: Signal[]) => void;
   // 銘柄情報を更新するコールバック（メモ・アラートなど）
   onUpdateStock?: (patch: Partial<Stock>) => void;
+  // 通知ON/OFFフラグ
+  notificationsEnabled?: boolean;
 };
 
 // 株価データの型
@@ -44,6 +46,7 @@ export default function StockCard({
   onSignalDetected,
   onSignalsUpdate,
   onUpdateStock,
+  notificationsEnabled = true,
 }: Props) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<IChartApi | null>(null);
@@ -69,6 +72,8 @@ export default function StockCard({
   );
   // アラート発火済みフラグ（1回だけ通知するため）
   const alertFiredRef = useRef(false);
+  // 最後に通知したシグナルのキー（重複通知防止用）
+  const notifiedSignalKeyRef = useRef<string>("");
   // メモ入力バッファ
   const [memoInput, setMemoInput] = useState(stock.memo ?? "");
 
@@ -112,8 +117,13 @@ export default function StockCard({
       onSignalsUpdate?.(detected);
 
       // 3指標以上揃った場合のみ通知・履歴記録する
+      // シグナルのキーを生成して前回と比較し、同じなら重複通知しない
       if (detected.length >= 3) {
-        notify(stock, detected);
+        const signalKey = detected.map((s) => s.name).sort().join(",");
+        if (notificationsEnabled && signalKey !== notifiedSignalKeyRef.current) {
+          notifiedSignalKeyRef.current = signalKey;
+          notify(stock, detected);
+        }
         if (onSignalDetected) {
           const latestPrice = data[data.length - 1].close;
           onSignalDetected(stock, detected, latestPrice);

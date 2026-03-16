@@ -22,14 +22,28 @@ export default function Home() {
   // 各銘柄のシグナル数を記録するマップ（ソートに使用）
   const [signalMap, setSignalMap] = useState<Record<string, Signal[]>>({});
 
+  // 通知ON/OFF（localStorageで永続化）
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
   const { watchlist, addStock, removeStock, updateStock } = useWatchlist();
   const { requestPermission } = useNotification();
   const { history, addRecord, updatePrices, calcStats } = useSignalHistory();
 
-  // ページ読み込み時にブラウザ通知の許可をリクエスト
+  // ページ読み込み時にブラウザ通知の許可をリクエスト＋保存済みON/OFF設定を復元
   useEffect(() => {
     requestPermission();
+    const saved = localStorage.getItem("notificationsEnabled");
+    if (saved !== null) setNotificationsEnabled(saved === "true");
   }, []);
+
+  // 通知ON/OFFを切り替えてlocalStorageに保存する
+  const toggleNotifications = () => {
+    setNotificationsEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem("notificationsEnabled", String(next));
+      return next;
+    });
+  };
 
   // 各カードからシグナル情報を受け取って記録する
   const handleSignalsUpdate = (code: string, signals: Signal[]) => {
@@ -96,6 +110,20 @@ export default function Home() {
 
           {/* 右側のボタン群 */}
           <div className="flex items-center gap-2">
+            {/* 通知ON/OFFトグルボタン */}
+            <button
+              onClick={toggleNotifications}
+              title={notificationsEnabled ? "通知をOFFにする" : "通知をONにする"}
+              className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
+                notificationsEnabled
+                  ? "bg-yellow-600 hover:bg-yellow-500 text-white"
+                  : "bg-gray-700 hover:bg-gray-600 text-gray-400"
+              }`}
+            >
+              <span>{notificationsEnabled ? "🔔" : "🔕"}</span>
+              <span className="hidden sm:inline">{notificationsEnabled ? "通知ON" : "通知OFF"}</span>
+            </button>
+
             {/* シグナル履歴ボタン */}
             <button
               onClick={() => setShowHistory(true)}
@@ -163,6 +191,7 @@ export default function Home() {
                 onSignalDetected={addRecord}
                 onSignalsUpdate={(signals) => handleSignalsUpdate(stock.code, signals)}
                 onUpdateStock={(patch) => updateStock(stock.code, patch)}
+                notificationsEnabled={notificationsEnabled}
               />
             ))}
           </div>
