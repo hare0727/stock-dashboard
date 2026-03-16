@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+// 日本語フォントをGoogle Fontsから読み込む
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-noto-jp",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +33,7 @@ export default function RootLayout({
   return (
     // 日本語対応・ダークモード対応
     <html lang="ja" className="dark">
-      <body className={`${geistSans.variable} antialiased bg-gray-950 text-gray-100`}>
+      <body className={`${geistSans.variable} ${notoSansJP.variable} antialiased bg-gray-950 text-gray-100`}>
         {children}
       </body>
     </html>

@@ -15,8 +15,8 @@ body {
   /* ダークモード固定 */
   background: var(--background);
   color: var(--foreground);
-  /* 日本語フォントのフォールバックを追加（macOS・Windows・Android対応） */
-  font-family: var(--font-geist-sans), "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic Medium", "Yu Gothic", Meiryo, sans-serif;
+  /* 英数字はGeist、日本語はNoto Sans JPを使用 */
+  font-family: var(--font-geist-sans), var(--font-noto-jp), sans-serif;
 }
 
 /* スクロールバーのスタイル */
